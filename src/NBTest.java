@@ -10,6 +10,8 @@ import java.util.Map.Entry;
 
 public class NBTest {
 	
+	public static int MAX_WORDS_IN_MEMORY = 200000;
+	
 	static Vector<String> tokenizeDoc(String cur_doc) {
         String[] words = cur_doc.split("\\s+");
         Vector<String> tokens = new Vector<String>();
@@ -23,14 +25,55 @@ public class NBTest {
 	}
 
 	public static void main(String[] args) {
-
+		
 		String testPath = args[0];
 		
-		//vector of dictionaries: one hashmap per class
+		/*
+		|----------------------------------------------------------------------
+		|  First go through the testing data - Needed vocabulary
+		|----------------------------------------------------------------------
+		|  Go through the testing set and get all the needed
+		|  tokens for the NB estimation
+		|----------------------------------------------------------------------
+		*/
+		HashSet<String> neededWords = new HashSet<String>();
+		
+		try {
+	        BufferedReader br = new BufferedReader(new FileReader(testPath));
+	        String line = br.readLine(); 
+			while (line != null) {
+			
+				//read labels and words
+				String[] labelsAndTokens = line.split("\\t",2);
+				Vector<String> tokens = tokenizeDoc(labelsAndTokens[1]);
+				
+				for(String token : tokens){
+					neededWords.add(token);
+				}
+					
+				//read next document
+				line = br.readLine();
+			}
+			br.close();
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		/*
+		|----------------------------------------------------------------------
+		|  Go through the training data
+		|----------------------------------------------------------------------
+		|  Go through the training set and get only the counts 
+		|  for the needed counts 
+		|----------------------------------------------------------------------
+		*/
+		
+		//vector of dictionaries: one map per class
 		Vector<HashMap<String,Integer>> vectorOfDics= new Vector<HashMap<String,Integer>>(); 
-		//hashmap that links ClassName to array number of vectorOfDics
+		//map that links ClassName to array number of vectorOfDics
 		HashMap<String,Integer> classPosition = new HashMap<String,Integer>();
-		//hashmap with label count
+		//map with label count
 		HashMap<String,Integer> classCount = new HashMap<String,Integer>();
 		//total doc count #(Y=*)
 		int totalDocCount = 0;
@@ -39,14 +82,6 @@ public class NBTest {
 		//vocabulary
 		HashSet<String> vocabulary = new HashSet<String>(); 
 		
-		
-		//labels of interest
-		String[] sL = new String[]{"CCAT","ECAT","GCAT","MCAT"};
-		HashSet<String> selectedLabels = new HashSet<String>(Arrays.asList(sL));
-		
-		// +--------------------------------------------------------
-		// |     READING THE COUNTS AND REBUILDING MAPS
-		// +--------------------------------------------------------
 
 		try {
 	        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
@@ -82,7 +117,7 @@ public class NBTest {
 						classCount.put(label, count);
 					}
 					//Y=y,W=w
-					else{
+					else if (neededWords.contains(token)){
 						vectorOfDics.elementAt(classPosition.get(label)).put(token, count);
 					}	
 				}				
@@ -93,14 +128,24 @@ public class NBTest {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
-		// +--------------------------------------------------------
-		// |     NAIVE BAYES CLASSIFICATION
-		// +--------------------------------------------------------
+		
+		
+		/*
+		|----------------------------------------------------------------------
+		|  Naive Bayes Classification
+		|----------------------------------------------------------------------
+		|  Go through the testing set again, but now 
+		|  for the classification part
+		|----------------------------------------------------------------------
+		*/
 
 		//feedback parameters
-		int totalPredictions = 0;
-		int totalCorrectPredictions = 0;
+		//int totalPredictions = 0;
+		//int totalCorrectPredictions = 0;
+		
+		//Smoothing parameters  Theta_i = (x_i + a) / (N + ad)
+		double d = 1.3*vocabulary.size();
+		double a = 1;
 		
 		try {
 	        BufferedReader br = new BufferedReader(new FileReader(testPath));
@@ -109,13 +154,8 @@ public class NBTest {
 			
 				//read labels and words
 				String[] labelsAndTokens = line.split("\\t",2);
-				HashSet<String> trueLabels = new HashSet<String>(Arrays.asList(labelsAndTokens[0].split(",")));
+				//HashSet<String> trueLabels = new HashSet<String>(Arrays.asList(labelsAndTokens[0].split(",")));
 				Vector<String> tokens = tokenizeDoc(labelsAndTokens[1]);
-				
-				
-				//Smoothing parameters  Theta_i = (x_i + a) / (N + ad)
-				double d = vocabulary.size();
-				double a = 1;
 				
 				//best label data
 				String bestLabel = "N/A";
@@ -155,9 +195,10 @@ public class NBTest {
 				System.out.println(bestLabel+"\t"+bestLogLikelihood);
 				
 				//feedback results
-				totalPredictions ++;
-				if(trueLabels.contains(bestLabel))
-					totalCorrectPredictions++;
+				//totalPredictions ++;
+				//if(trueLabels.contains(bestLabel)){
+				//	totalCorrectPredictions++;
+				//}
 				
 				//read next document
 				line = br.readLine();
@@ -166,11 +207,17 @@ public class NBTest {
 			
 			//print results
 			//System.out.println("\nResults: "+totalCorrectPredictions+"/"+totalPredictions+" = "+((double)totalCorrectPredictions/(double)totalPredictions));
+			//System.out.println("d: "+d);
 			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		
+		
+		
 	}
+	
+	
+
 
 }
